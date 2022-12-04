@@ -1,0 +1,117 @@
+---
+title: "Inteligencia artificial avanzada para la ciencia de datos II(Módulo 5: Estadística Avanzada para ciencia de datos)"
+author: "Roel De la Rosa - A01197595"
+date: "21/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+A través de este reporte se realizará un análisis de series no estacionarias.
+El objetivo es realizar un análisis de series de tiempo para una tienda de televisores, se busca predecir la cantidad de ventas que se harán para su siguiente año.
+
+Para poder hacerlo primero se hará una descomposición de series temporales, lo que ocurre aquí es que se separa una serie de tiempo en tres componentes distintos. El primero de ellos es la tendencia que tiene la serie de tiempo, el segundo es el componente estacional el cual es un fenomeno ciclico. El tercero es el componente aleatorio, el cual es el factor necesario para que, sumado a los dos anteriores, se llegue a la observación real.
+
+Realiza el gráfico de dispersión. Observa la tendencia y los ciclos.
+```{r}
+años <- c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4)
+trimestre <- c(1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4)
+ventas <- c(4.8,4.1,6.0,6.5,5.8,5.2,6.8,7.4,6.0,5.6,7.5,7.8,6.3,5.9,8.0,8.4)
+df <- data.frame(años, trimestre, ventas)
+plot.ts(ts(ventas, frequency = 4, start(c(2016,1))))
+```
+
+Realiza el análisis de tendencia y estacionalidad
+```{r}
+T=ts(ventas, frequency = 4, start(c(2016, 1)))
+D = decompose(T, type = 'm')
+D
+```
+
+```{r}
+plot(D, col = 'red')
+```
+Aquí podemos ver la descomposición de la serie temporal. La primera gráfica, 'observed', muestra los resultados reales que se obtienen. El segundo, 'trend', muestra la línea de tendencía de los datos obtenidos. La tercera gráfica, 'seasonal', muestra las variaciones periodicas que se observan del comportamiento de los datos reales. Por último, la última gráfica muestra el comportamiento 'random', es decir, que no se puede predecir. Esto es importante pues nunca tendremos un modelo que puede predecir todo de forma perfecta.
+
+
+Analiza el modelo lineal de la tendencia:
+
+Realiza la regresión lineal de la tendencia (ventas desestacionalizadas vs tiempo)
+```{r}
+ventas_desestacionadas <- D$x/D$seasonal
+t <-1:16 
+lr= lm(ventas_desestacionadas ~ t)
+```
+Dibuja la recta junto con las ventas desestacionalizadas.
+```{r}
+plot(t, ventas_desestacionadas)
+abline(lr, col = 'red')
+```
+Podemos observar que las ventas desestacionalizadas parece que se comporte de manera lineal con respecto al tiempo. Si bien la línea no es perfecta, parece que se ajusta de manera más que adecuada con las ventas desestacionalzadas.
+
+Analiza la pertinencia del modelo lineal:
+```{r}
+summary(lr)
+```
+A partir de análisis de la regresión lineal de las ventas desestacionalizadas podemos observar que el p-value es de $4.248 x10^{-9}$, lo cual indica que el modelo es estadisticamente significativo, es decir, la regresión lineal representa la tendencia de los datos.
+
+```{r}
+qqnorm(lr$residuals)
+qqline(lr$residuals, col='red')
+shapiro.test(lr$residuals)
+```
+Podemos ver que parece ser que no se rechaza la prueba de normalidad de shapiro con respecto a los residuales de la regresion lineal. Esto es importante, pues para poder justificar que una regresión lineal se ajusta correctamente debemos de comprobar que los residuales de dicha regresión lineal se distribuyen bajo una distribución Gaussiana.
+
+Calcula el CME y el EPAM (promedio de los errores porcentuales) de la predicción de la serie de tiempo.
+
+Posteriormente realziamos unas predicciones para una serie de tiempo y podemos ver a continuación los resultados obtenidos
+
+```{r, echo=TRUE}
+e <- NA
+p <- NA
+n <- 16
+error <- NA
+y = function(k) {5.108 + 0.147*k}
+
+for(i in 1:(n-3)){p[i+3]=y(i); e[i+3] = p[i+3] - ventas[i+3]; error[i+3] = ((ventas[i+3]-p[i+3])/ventas[i+3])*100
+}
+CME2 <-mean(e^2,na.rm=TRUE)
+message('El CME^2 es de: ', round(CME2,5))
+```
+Vemos que el CME^2 obtenido es de 1.004, el cual es un valor relativamente muy bajo, lo que puede indicar que la estimación que hemos elaborado podrían ser consideradas como adecuadas.
+
+Dibuja el gráfico de los valores de las ventas y las predicciones vs el tiempo
+
+```{r}
+plot(t, ventas_desestacionadas)
+abline(lr, col = 'red')
+```
+En el gráfico anterior podemos observar que la línea recta se ajusta muy bien a los datos, lo cual nos indica nuevamente que los resultados obtenidos son bastante buenos.
+
+Realiza el pronóstico para el siguiente año.
+
+```{r}
+y1 <- y(17)*D$seasonal[1]
+y2 <- y(18)*D$seasonal[2]
+y3 <- y(19)*D$seasonal[3]
+y4 <- y(20)*D$seasonal[4]
+
+df2 <- data.frame("Trimestres" = c(1,2,3,4), "predicciones" = c(y1,y2,y3,y4))
+df2
+```
+A partir de lo anteriormente mencionado se realiza las predicciones para los siguientes trimestres y podemos observar los resultados obtenidos. Obviamente no se pueden vender un número no entero de televisores, por lo que, en un caso pesisimista, redondeamos al entero menor más cercano.
+
+```{r}
+y1 <- floor(y(17)*D$seasonal[1])
+y2 <- floor(y(18)*D$seasonal[2])
+y3 <- floor(y(19)*D$seasonal[3])
+y4 <- floor(y(20)*D$seasonal[4])
+
+df2 <- data.frame("Trimestres" = c(1,2,3,4), "predicciones" = c(y1,y2,y3,y4))
+df2
+```
+
+
+
